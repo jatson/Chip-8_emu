@@ -2,19 +2,33 @@
 #define CHIP_8_H
 
 #include <stdint.h>
+#include <iostream>
+#include <vector>
+#include <fstream>
 
-#define MEMORY_SIZE 4096
-#define SCREEN_SIZE 2048
+#define DEBUG
+
+#ifdef DEBUG
+#define UNUSED(expr) do { (void)(expr); } while (0) /* just a macro to avoid 'unused' compiler warn during the develop phase */
+#endif
+
+#define MEMORY_SIZE     4096
+#define SCREEN_SIZE     2048
+#define REGISTER_SIZE   16
+#define STACK_SIZE      16
+#define KEYPAD_SIZE     16
+#define FONTSET_SIZE    (16 * 5)
+#define PROG_MEM_OFFSET 0x200
 
 class chip_8
 {
 private:
-    uint16_t    m_opcode;       // 35 opcodes, 2 byte long, big-endian
-    uint8_t     m_register[16]; // 8-bit registers from V0 to VF. VF is carry flag
-    uint16_t    m_I;            // Index register. Value can be 0x000 to 0xFFF
-    uint16_t    m_pc;           // Program Counter. Value can be 0x000 to 0xFFF
-    uint8_t     m_delayTimer;   // 60Hz, R/W timer for game events
-    uint8_t     m_soundTimer;   // 60Hz timer to sound effects. Beep sound when 0 reached.
+    uint16_t    m_opcode;                   // 35 opcodes, 2 byte long, big-endian
+    uint8_t     m_register[REGISTER_SIZE];  // 8-bit registers from V0 to VF. VF is carry flag
+    uint16_t    m_I;                        // Index register. Value can be 0x000 to 0xFFF
+    uint16_t    m_pc;                       // Program Counter. Value can be 0x000 to 0xFFF
+    uint8_t     m_delayTimer;               // 60Hz, R/W timer for game events
+    uint8_t     m_soundTimer;               // 60Hz timer to sound effects. Beep sound when 0 reached.
 
     /*
      * System memory map:
@@ -39,15 +53,18 @@ private:
      * System has 16 levels of stack and to know which stack is currently used,
      * implementation of the stack pointer is needed.
      */
-    uint16_t m_stack[16];
-    uint16_t *m_sp;
+    uint16_t m_stack[STACK_SIZE];
+    uint16_t m_sp;
 
     /*
      * Hex based keypad
      * Values from 0x0 to 0xF
      */
-    uint8_t m_key[16];
+    uint8_t m_key[KEYPAD_SIZE];
 
+    static const uint8_t m_fontset[FONTSET_SIZE];
+
+    bool m_drawFlag;
 
 public:
     chip_8();
@@ -55,8 +72,10 @@ public:
 
     void init();
     void mainCycle();
-    void loadGame(const char * game);
+    void loadGame(const char * fileName);
+    void setPressedKey();
 
+    bool drawFlag() const;
 };
 
 #endif // CHIP_8_H
