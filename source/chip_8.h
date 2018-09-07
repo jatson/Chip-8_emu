@@ -64,7 +64,9 @@ private:
 
     static const uint8_t m_fontset[FONTSET_SIZE];
 
-    bool m_drawFlag;
+    bool m_drawFlag; // Flag to indicate that the screen need to be updated
+
+    void clearScreen();
 
 public:
     chip_8();

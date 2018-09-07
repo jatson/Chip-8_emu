@@ -31,6 +31,12 @@ const uint8_t chip_8::m_fontset[FONTSET_SIZE] =
     0xF0, 0x80, 0xF0, 0x80, 0x80  //F
 };
 
+void chip_8::clearScreen()
+{
+    for (int i = 0; i < SCREEN_SIZE; ++i) m_gfx[i] = 0;
+    m_drawFlag = true;
+}
+
 chip_8::chip_8()
 {
     init();
@@ -70,62 +76,151 @@ void chip_8::mainCycle()
     m_opcode = ((m_memory[m_pc] << 8) | m_memory[m_pc + 1]);
 
     // decode Opcode
-    switch (m_opcode & 0xF000) {
+    switch (m_opcode & 0xF000)
+    {
     case 0x0000:
-        switch (m_opcode & 0x000F) {
-        case 0x0000:
+        switch (m_opcode & 0x000F)
+        {
+        case 0x0: // 00E0 - clears the screen
+            clearScreen();
+            m_pc += 2;
+            break;
 
+        case 0xE: // 00EE - Returns from a subroutine.
+            --m_sp;  // this is return.. thus stack pointer need to be decreased.
+            m_pc = m_stack[m_sp];
+            m_pc +=2;
             break;
-        case 0x000E:
-            break;
+
         default:
             // unknown opcode
             break;
         }
         break;
-    case 0x1000:
+
+    case 0x1000: // 1NNN - 	Jumps to address NNN.
+        m_pc = m_opcode & 0x0FFF;
         break;
-    case 0x2000:
+
+    case 0x2000: // 2NNN - Calls subroutine at NNN.
+        m_stack[m_sp] = m_pc;
+        ++m_sp;
+
+        m_pc = m_opcode & 0x0FFF;
         break;
-    case 0x3000:
+
+    case 0x3000: // 3XNN - Skips the next instruction if VX equals NN. (Usually the next instruction is a jump to skip a code block)
+        if(m_register[(m_opcode & 0x0F00) >> 8] == (m_opcode & 0x00FF)) m_pc += 4;
+        else m_pc += 2;
+
         break;
+
     case 0x4000:
+        if(m_register[(m_opcode & 0x0F00) >> 8] != (m_opcode & 0x00FF)) m_pc += 4;
+        else m_pc += 2;
+
         break;
+
     case 0x5000:
+        if(m_register[(m_opcode & 0x0F00) >> 8] == m_register[(m_opcode & 0x00F0) >> 4]) m_pc += 4;
+        else m_pc += 2;
+
         break;
+
     case 0x6000:
+        m_register[(m_opcode & 0x0F00) >> 8] = (m_opcode & 0x00FF);
+        m_pc += 2;
+
         break;
+
     case 0x7000:
+        m_register[(m_opcode & 0x0F00) >> 8] += (m_opcode & 0x00FF);
+        m_pc += 2;
+
         break;
+
     case 0x8000:
         switch (m_opcode & 0x000F)
         {
+        case 0x0:
+            m_register[(m_opcode & 0x0F00) >> 8] = m_register[(m_opcode & 0x00F0) >> 4];
+            m_pc += 2;
+
+            break;
+
         case 0x1:
+            m_register[(m_opcode & 0x0F00) >> 8] = (m_register[(m_opcode & 0x0F00) >> 8] | m_register[(m_opcode & 0x00F0) >> 4]);
+            m_pc += 2;
+
             break;
+
         case 0x2:
+            m_register[(m_opcode & 0x0F00) >> 8] = (m_register[(m_opcode & 0x0F00) >> 8] & m_register[(m_opcode & 0x00F0) >> 4]);
+            m_pc += 2;
+
             break;
+
         case 0x3:
+            m_register[(m_opcode & 0x0F00) >> 8] = (m_register[(m_opcode & 0x0F00) >> 8] ^ m_register[(m_opcode & 0x00F0) >> 4]);
+            m_pc += 2;
+
             break;
+
         case 0x4:
+            if(m_register[(m_opcode & 0x00F0) >> 4] > (0xFF - m_register[(m_opcode & 0x0F00) >> 8])) m_register[0xF] = 1;
+            else m_register[0xF] = 0;
+            m_register[(m_opcode & 0x0F00) >> 8] += m_register[(m_opcode & 0x00F0) >> 4];
+            m_pc += 2;
+
             break;
+
         case 0x5:
+            if(m_register[(m_opcode & 0x00F0) >> 4] > m_register[(m_opcode & 0x0F00) >> 8]) m_register[0xF] = 0;
+            else m_register[0xF] = 1;
+            m_register[(m_opcode & 0x0F00) >> 8] -= m_register[(m_opcode & 0x00F0) >> 4];
+            m_pc += 2;
+
             break;
+
         case 0x6:
+            m_register[0xF] = m_register[(m_opcode & 0x0F00) >> 8] & 0x1;
+            m_register[(m_opcode & 0x0F00) >> 8] >>= 1;
+            m_pc += 2;
+
             break;
+
         case 0x7:
+            if(m_register[(m_opcode & 0x00F0) >> 4] > m_register[(m_opcode & 0x0F00) >> 8]) m_register[0xF] = 0;
+            else m_register[0xF] = 1;
+            m_register[(m_opcode & 0x0F00) >> 8] = m_register[(m_opcode & 0x00F0) >> 4] - m_register[(m_opcode & 0x0F00) >> 8];
+            m_pc += 2;
+
             break;
+
         case 0xE:
+            m_register[0xF] = m_register[(m_opcode & 0x0F00) >> 8] >> 7;
+            m_register[(m_opcode & 0x0F00) >> 8] <<= 1;
+            m_pc += 2;
+
             break;
         default:
             // unknown opcode
             break;
         }
+        break;
+
+    case 0x9000:
+        if(m_register[(m_opcode & 0x0F00) >> 8] != m_register[(m_opcode & 0x00F0) >> 4]) m_pc += 4;
+        else m_pc += 2;
 
         break;
-    case 0x9000:
-        break;
+
     case 0xA000:
+        m_I = (m_opcode & 0x0FFF);
+        m_pc += 2;
+
         break;
+
     case 0xB000:
         break;
     case 0xC000:
