@@ -74,6 +74,8 @@ void chip_8::clearScreen()
 void chip_8::draw(uint16_t x, uint16_t y, uint16_t height)
 {
     uint16_t pixel;
+
+    m_register[0xF] = 0;
     for (int yline = 0; yline < height; yline++) // height
     {
         pixel = m_memory[m_I + yline];
@@ -363,8 +365,17 @@ void chip_8::mainCycle()
         // unknown opcode
         break;
     }
-    // execute Opcode
+
     // update timers
+    if(m_delayTimer > 0) --m_delayTimer;
+    if(m_soundTimer > 0)
+    {
+        if(m_soundTimer == 1)
+        {
+#warning "beep function need to be implemented here"
+        }
+        --m_soundTimer;
+    }
 }
 
 void chip_8::loadGame(const char *fileName)
@@ -382,7 +393,14 @@ void chip_8::loadGame(const char *fileName)
     // read the data:
     file.read((char*) &fileData[0], fileSize);
 
-#warning "do something with the read data"
+    // Copy buffer to Chip8 memory
+    if((MEMORY_SIZE - PROG_MEM_OFFSET) > fileSize)
+    {
+        for(int i = 0; i < fileSize; ++i) m_memory[i + 512] = fileData[i];
+    }
+    else std::cout << "Error: ROM too big for memory" << std::endl;
+
+    file.close();
 }
 
 void chip_8::setPressedKey()
