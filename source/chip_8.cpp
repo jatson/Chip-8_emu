@@ -1,5 +1,39 @@
 #include "chip_8.h"
 
+chip_8::chip_8()
+{
+    srand(time(NULL));
+    init();
+}
+
+chip_8::~chip_8()
+{
+
+}
+
+/* init registers and memory */
+void chip_8::init()
+{
+    m_pc     = PROG_MEM_OFFSET; /* PC starts here */
+    m_opcode = 0;
+    m_I      = 0;
+    m_sp     = 0;
+
+    for (int i = 0; i < REGISTER_SIZE; ++i) m_register[i] = 0;
+    for (int i = 0; i < MEMORY_SIZE; ++i) m_memory[i] = 0;
+    for (int i = 0; i < SCREEN_SIZE; ++i) m_gfx[i] = 0;
+    for (int i = 0; i < STACK_SIZE; ++i) m_stack[i] = 0;
+    for (int i = 0; i < KEYPAD_SIZE; ++i) m_key[i] = 0;
+
+    m_delayTimer = 0;
+    m_soundTimer = 0;
+
+    m_drawFlag = true;
+
+    /* loading font set to memory */
+    for (int i = 0; i < FONTSET_SIZE; ++i) m_memory[i] = m_fontset[i];
+}
+
 /*
  * Font set - Explanation of working by example:
  *
@@ -37,41 +71,35 @@ void chip_8::clearScreen()
     m_drawFlag = true;
 }
 
-chip_8::chip_8()
+void chip_8::draw(uint16_t x, uint16_t y, uint16_t height)
 {
-    init();
-}
+    uint16_t pixel;
+    for (int yline = 0; yline < height; yline++) // height
+    {
+        pixel = m_memory[m_I + yline];
 
-chip_8::~chip_8()
-{
-
-}
-
-/* init registers and memory */
-void chip_8::init()
-{
-    m_pc     = PROG_MEM_OFFSET; /* PC starts here */
-    m_opcode = 0;
-    m_I      = 0;
-    m_sp     = 0;
-
-    for (int i = 0; i < REGISTER_SIZE; ++i) m_register[i] = 0;
-    for (int i = 0; i < MEMORY_SIZE; ++i) m_memory[i] = 0;
-    for (int i = 0; i < SCREEN_SIZE; ++i) m_gfx[i] = 0;
-    for (int i = 0; i < STACK_SIZE; ++i) m_stack[i] = 0;
-    for (int i = 0; i < KEYPAD_SIZE; ++i) m_key[i] = 0;
-
-    m_delayTimer = 0;
-    m_soundTimer = 0;
-
+        for(int xline = 0; xline < 8; xline++) // width --> 8 pixel
+        {
+            if((pixel & (0x80 >> xline)) != 0)
+            {
+                if(m_gfx[(x + xline + ((y + yline) * 64))] == 1)
+                {
+                    m_register[0xF] = 1;
+                }
+                m_gfx[(x + xline + ((y + yline) * 64))] ^= 1;
+            }
+        }
+    }
     m_drawFlag = true;
-
-    /* loading font set to memory */
-    for (int i = 0; i < FONTSET_SIZE; ++i) m_memory[i] = m_fontset[i];
 }
+
+
 
 void chip_8::mainCycle()
 {
+    uint16_t x, y, height;
+    bool keyPressed = false;
+
     // fetch Opcode
     m_opcode = ((m_memory[m_pc] << 8) | m_memory[m_pc + 1]);
 
@@ -99,14 +127,14 @@ void chip_8::mainCycle()
         break;
 
     case 0x1000: // 1NNN - 	Jumps to address NNN.
-        m_pc = m_opcode & 0x0FFF;
+        m_pc = (m_opcode & 0x0FFF);
         break;
 
     case 0x2000: // 2NNN - Calls subroutine at NNN.
         m_stack[m_sp] = m_pc;
         ++m_sp;
 
-        m_pc = m_opcode & 0x0FFF;
+        m_pc = (m_opcode & 0x0FFF);
         break;
 
     case 0x3000: // 3XNN - Skips the next instruction if VX equals NN. (Usually the next instruction is a jump to skip a code block)
@@ -222,18 +250,39 @@ void chip_8::mainCycle()
         break;
 
     case 0xB000:
+        m_pc = m_register[0] + (m_opcode & 0x0FFF);
+
         break;
+
     case 0xC000:
+        m_register[(m_opcode & 0x0F00) >> 8] = ((rand() % 0xFF) & (m_opcode & 0xFF));
+        m_pc += 2;
+
         break;
+
     case 0xD000:
+        x = m_register[(m_opcode & 0x0F00) >> 8];
+        y = m_register[(m_opcode & 0x00F0) >> 4];
+        height = (m_opcode & 0x000F);
+        draw(x, y, height);
+
         break;
+
     case 0xE000:
         switch (m_opcode & 0x00FF)
         {
         case 0x9E:
+            if(m_key[m_register[(m_opcode & 0x0F00) >> 8]] != 0) m_pc +=4;
+            else m_pc += 2;
+
             break;
+
         case 0xA1:
+            if(m_key[m_register[(m_opcode & 0x0F00) >> 8]] == 0) m_pc +=4;
+            else m_pc += 2;
+
             break;
+
         default:
             // unknown opcode
             break;
@@ -242,22 +291,69 @@ void chip_8::mainCycle()
         switch (m_opcode & 0x00FF)
         {
         case 0x07:
+            m_register[(m_opcode & 0x0F00) >> 8] = m_delayTimer;
+            m_pc += 2;
+
             break;
+
         case 0x0A:
+            for (int i = 0; i < 0xF; ++i)
+            {
+                if(m_key[i] != 0)
+                {
+                    m_register[(m_opcode & 0x0F00) >> 8] = i;
+                    keyPressed = true;
+                }
+            }
+
+            if(keyPressed == false) return;
+
+            m_pc += 2;
+
             break;
+
         case 0x15:
+            m_delayTimer = m_register[(m_opcode & 0x0F00) >> 8];
+            m_pc += 2;
             break;
+
         case 0x18:
+            m_soundTimer = m_register[(m_opcode & 0x0F00) >> 8];
+            m_pc += 2;
             break;
+
         case 0x1E:
+            m_I += m_register[(m_opcode & 0x0F00) >> 8];
+            m_pc += 2;
+
             break;
+
         case 0x29:
+            m_I = m_register[(m_opcode & 0x0F00) >> 8] * 0x5;
+            m_pc += 2;
+
             break;
+
         case 0x33:
+            m_memory[m_I]     =  m_register[(m_opcode & 0x0F00) >> 8] / 100;
+            m_memory[m_I + 1] = (m_register[(m_opcode & 0x0F00) >> 8] / 10) % 10;
+            m_memory[m_I + 2] = (m_register[(m_opcode & 0x0F00) >> 8] % 100) % 10;
+
+            m_pc += 2;
             break;
+
         case 0x55:
+            for (int i = 0; i <= ((m_opcode & 0x0F00) >> 8); ++i) m_memory[m_I + i] = m_register[i];
+            m_I += ((m_opcode & 0x0F00) >> 8) + 1;
+
+            m_pc += 2;
             break;
+
         case 0x65:
+            for (int i = 0; i <= ((m_opcode & 0x0F00) >> 8); ++i) m_register[i] = m_memory[m_I + i];
+            m_I += ((m_opcode & 0x0F00) >> 8) + 1;
+
+            m_pc += 2;
             break;
         default:
             // unknown opcode

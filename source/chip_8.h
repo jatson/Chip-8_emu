@@ -5,6 +5,7 @@
 #include <iostream>
 #include <vector>
 #include <fstream>
+#include <time.h>
 
 #define DEBUG
 
@@ -67,6 +68,7 @@ private:
     bool m_drawFlag; // Flag to indicate that the screen need to be updated
 
     void clearScreen();
+    void draw(uint16_t x, uint16_t y, uint16_t height);
 
 public:
     chip_8();
