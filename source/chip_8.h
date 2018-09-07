@@ -14,12 +14,12 @@
 #endif
 
 #define MEMORY_SIZE     4096
+#define PROG_MEM_OFFSET 512
 #define SCREEN_SIZE     2048
 #define REGISTER_SIZE   16
 #define STACK_SIZE      16
 #define KEYPAD_SIZE     16
 #define FONTSET_SIZE    (16 * 5)
-#define PROG_MEM_OFFSET 0x200
 
 class chip_8
 {
