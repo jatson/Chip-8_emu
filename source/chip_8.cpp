@@ -378,11 +378,10 @@ void chip_8::mainCycle()
     }
 }
 
-bool chip_8::loadGame(const char *fileName)
+bool chip_8::loadGame(std::string fileName)
 {
     // Open file
     std::streampos fileSize;
-    std::vector<uint8_t> fileData(fileSize);
     std::ifstream file(fileName, std::ios::binary);
 
     if(file.is_open() == false) return false;
@@ -392,15 +391,31 @@ bool chip_8::loadGame(const char *fileName)
     fileSize = file.tellg();
     file.seekg(0, std::ios::beg);
 
+#ifdef DEBUG
+    qDebug() << "File size determined correctly: " << fileSize;
+#endif
+
+    std::vector<uint8_t> fileData(fileSize);
+
     // read the data:
     file.read((char*) &fileData[0], fileSize);
+
+#ifdef DEBUG
+    qDebug() << "Data read.";
+#endif
 
     // Copy buffer to Chip8 memory
     if((MEMORY_SIZE - PROG_MEM_OFFSET) > fileSize)
     {
-        for(int i = 0; i < fileSize; ++i) m_memory[i + 512] = fileData[i];
+        for(int i = 0; i < fileSize; ++i) m_memory[i + PROG_MEM_OFFSET] = fileData.at(i);
     }
-    else std::cout << "Error: ROM too big for memory" << std::endl;
+    else
+    {
+        std::cout << "Error: ROM too big for memory" << std::endl;
+#ifdef DEBUG
+        qDebug() << "Data too big for the memory";
+#endif
+    }
 
     file.close();
 

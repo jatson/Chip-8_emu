@@ -11,6 +11,7 @@
 
 #ifdef DEBUG
 #define UNUSED(expr) do { (void)(expr); } while (0) /* just a macro to avoid 'unused' compiler warn during the develop phase */
+#include <QDebug>
 #endif
 
 #define MEMORY_SIZE     4096
@@ -76,7 +77,7 @@ public:
 
     void init();
     void mainCycle();
-    bool loadGame(const char * fileName);
+    bool loadGame(std::string fileName);
     void setPressedKey();
 
     bool drawFlag() const;
