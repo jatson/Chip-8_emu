@@ -76,7 +76,7 @@ public:
 
     void init();
     void mainCycle();
-    void loadGame(const char * fileName);
+    bool loadGame(const char * fileName);
     void setPressedKey();
 
     bool drawFlag() const;

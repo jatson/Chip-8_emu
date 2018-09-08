@@ -378,12 +378,14 @@ void chip_8::mainCycle()
     }
 }
 
-void chip_8::loadGame(const char *fileName)
+bool chip_8::loadGame(const char *fileName)
 {
     // Open file
     std::streampos fileSize;
     std::vector<uint8_t> fileData(fileSize);
     std::ifstream file(fileName, std::ios::binary);
+
+    if(file.is_open() == false) return false;
 
     // get its size:
     file.seekg(0, std::ios::end);
@@ -401,6 +403,8 @@ void chip_8::loadGame(const char *fileName)
     else std::cout << "Error: ROM too big for memory" << std::endl;
 
     file.close();
+
+    return true;
 }
 
 void chip_8::setPressedKey()

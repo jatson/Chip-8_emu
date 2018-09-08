@@ -4,6 +4,7 @@
 /* Qt libraries */
 #include <QMainWindow>
 #include <QGraphicsView>
+#include <QDebug>
 
 /* External libraries */
 #include "chip_8.h"
